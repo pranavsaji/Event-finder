@@ -20,16 +20,20 @@ app = FastAPI(
 )
 
 # ---------------------------------------------------------------------------
-# CORS
+# CORS — allow explicit origins + all *.vercel.app preview URLs
 # ---------------------------------------------------------------------------
 _ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
     "http://localhost:5173,http://localhost:4173,http://127.0.0.1:5173",
 ).split(",")
 
+# Allow all vercel.app subdomains (handles rotating preview URLs)
+_ALLOWED_ORIGIN_REGEX = r"https://.*\.vercel\.app"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
+    allow_origin_regex=_ALLOWED_ORIGIN_REGEX,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Accept", "Authorization"],
 )
