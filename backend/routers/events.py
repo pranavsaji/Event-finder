@@ -1,6 +1,8 @@
 import asyncio
 import re
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from fetchers import (
     fetch_eventbrite,
     fetch_ticketmaster,
@@ -12,9 +14,10 @@ from fetchers import (
     fetch_luma,
 )
 from fetchers.models import Event
+from db.database import get_db
+from db.crud import get_cached_events, upsert_events
 
 router = APIRouter()
-
 
 _SAFE_PARAM = re.compile(r"^[\w\s\-&',.]{0,100}$")
 
@@ -41,6 +44,7 @@ async def get_events(
     q: str = Query("", max_length=100, description="Search query"),
     category: str = Query("", max_length=50, description="Category filter"),
     source: str = Query("", max_length=50, description="Filter by source"),
+    db: AsyncSession = Depends(get_db),
 ):
     q = _validate_param(q, "q")
     category = _validate_param(category, "category")
@@ -51,6 +55,15 @@ async def get_events(
     if source and source.lower() not in ALLOWED_SOURCES:
         raise HTTPException(status_code=400, detail=f"Unknown source '{source}'")
 
+    # Cache key covers query + category; source filter is applied cheaply after
+    cache_key = f"q={q.lower()}&category={category.lower()}"
+    cached = await get_cached_events(db, cache_key)
+    if cached is not None:
+        if source:
+            cached = [e for e in cached if e.source.lower() == source.lower()]
+        return cached
+
+    # Cache miss — scrape all sources in parallel
     tasks = [
         fetch_eventbrite(query=q, category=category),
         fetch_ticketmaster(query=q, category=category),
@@ -61,7 +74,6 @@ async def get_events(
         fetch_allevents(),
         fetch_luma(),
     ]
-
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     all_events: list[Event] = []
@@ -69,7 +81,7 @@ async def get_events(
         if isinstance(result, list):
             all_events.extend(result)
 
-    # Deduplicate by title+date combo
+    # Deduplicate by title + date
     seen: set[str] = set()
     unique: list[Event] = []
     for ev in all_events:
@@ -78,10 +90,10 @@ async def get_events(
             seen.add(key)
             unique.append(ev)
 
-    # Filter by source if requested
+    await upsert_events(db, unique, cache_key)
+
     if source:
         unique = [e for e in unique if e.source.lower() == source.lower()]
-
     return unique
 
 

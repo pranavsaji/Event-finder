@@ -5,20 +5,22 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
+
 from routers.events import router as events_router
+from routers.auth import router as auth_router
+from db.database import init_db
 
 load_dotenv()
 
 app = FastAPI(
     title="SF Bay Area Events API",
     version="1.0.0",
-    # Disable auto-generated docs in production
     docs_url="/docs" if os.getenv("ENV", "development") != "production" else None,
     redoc_url=None,
 )
 
 # ---------------------------------------------------------------------------
-# CORS — restrict to known frontend origins in production
+# CORS
 # ---------------------------------------------------------------------------
 _ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
@@ -28,12 +30,12 @@ _ALLOWED_ORIGINS = os.getenv(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
-    allow_methods=["GET"],
-    allow_headers=["Content-Type", "Accept"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Accept", "Authorization"],
 )
 
 # ---------------------------------------------------------------------------
-# Security headers middleware
+# Security headers
 # ---------------------------------------------------------------------------
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -46,7 +48,7 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 # ---------------------------------------------------------------------------
-# Simple in-memory rate limiter — max 30 requests / 60 s per IP
+# Rate limiting — 30 req / 60 s per IP
 # ---------------------------------------------------------------------------
 _RATE_LIMIT = int(os.getenv("RATE_LIMIT", "30"))
 _RATE_WINDOW = int(os.getenv("RATE_WINDOW", "60"))
@@ -57,25 +59,28 @@ async def rate_limit(request: Request, call_next):
     ip = request.client.host if request.client else "unknown"
     now = time.time()
     window_start = now - _RATE_WINDOW
-
-    timestamps = _request_log[ip]
-    # Purge old entries
-    _request_log[ip] = [t for t in timestamps if t > window_start]
-
+    _request_log[ip] = [t for t in _request_log[ip] if t > window_start]
     if len(_request_log[ip]) >= _RATE_LIMIT:
         return JSONResponse(
             status_code=429,
             content={"detail": "Too many requests. Please slow down."},
             headers={"Retry-After": str(_RATE_WINDOW)},
         )
-
     _request_log[ip].append(now)
     return await call_next(request)
+
+# ---------------------------------------------------------------------------
+# Startup
+# ---------------------------------------------------------------------------
+@app.on_event("startup")
+async def startup():
+    await init_db()
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 app.include_router(events_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 
 @app.get("/health")

@@ -55,3 +55,4 @@ desktop.ini
 # Temp / generated
 .tmp/
 *.log
+sf_events.db
