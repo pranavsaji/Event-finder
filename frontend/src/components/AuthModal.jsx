@@ -71,7 +71,6 @@ export default function AuthModal({ onClose }) {
               value={form.password}
               onChange={set('password')}
               required
-              minLength={8}
               className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500/50 transition-all"
             />
             <button
