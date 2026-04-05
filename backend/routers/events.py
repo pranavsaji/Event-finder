@@ -162,16 +162,25 @@ def _kw_pattern(label: str) -> re.Pattern:
     return re.compile(pattern, re.IGNORECASE)
 
 
+# Categories from sources that are too vague — override with keyword inference
+_WEAK_CATEGORIES = {"community", "miscellaneous", "other", "general", "undefined", "none", ""}
+
+
 def _infer_category(event: Event) -> str:
     """Return our normalised category label for an event."""
     raw = (event.category or "").lower().strip()
-    if raw and raw not in ("undefined", "none", "other", ""):
+
+    # Only trust specific high-signal source categories
+    if raw and raw not in _WEAK_CATEGORIES:
         mapped = _CAT_MAP.get(raw)
-        if mapped:
+        if mapped and mapped not in _WEAK_CATEGORIES:
+            # For strong categories (Music, Sports, Arts) trust them
+            # but still let keyword inference override if title clearly belongs elsewhere
+            text = f"{event.title or ''} {event.description or ''}"
+            for label in ("tech", "music", "sports", "food & drink"):
+                if label != mapped and _kw_pattern(label).search(text):
+                    return label
             return mapped
-        for label in _CAT_KEYWORDS:
-            if label in raw:
-                return label
 
     # Word-boundary keyword search in title + description
     text = f"{event.title or ''} {event.description or ''}"
