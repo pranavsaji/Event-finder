@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react'
 
+const API = import.meta.env.VITE_API_URL || ''
+
 export function useEvents() {
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(false)
@@ -15,7 +17,10 @@ export function useEvents() {
       if (category) params.set('category', category)
       if (source) params.set('source', source)
 
-      const res = await fetch(`/api/events?${params}`)
+      const token = localStorage.getItem('sf_token') || ''
+      const res = await fetch(`${API}/api/events?${params}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setEvents(data)
