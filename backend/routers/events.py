@@ -1,5 +1,6 @@
 import asyncio
 import re
+from functools import lru_cache
 from fastapi import APIRouter, Query, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -153,6 +154,14 @@ _CAT_MAP = {
 }
 
 
+@lru_cache(maxsize=None)
+def _kw_pattern(label: str) -> re.Pattern:
+    """Compile a word-boundary OR pattern for all keywords in a category."""
+    keywords = _CAT_KEYWORDS[label]
+    pattern = "|".join(r"\b" + re.escape(kw) + r"\b" for kw in keywords)
+    return re.compile(pattern, re.IGNORECASE)
+
+
 def _infer_category(event: Event) -> str:
     """Return our normalised category label for an event."""
     raw = (event.category or "").lower().strip()
@@ -160,17 +169,16 @@ def _infer_category(event: Event) -> str:
         mapped = _CAT_MAP.get(raw)
         if mapped:
             return mapped
-        # Check if raw category contains any of our known labels
         for label in _CAT_KEYWORDS:
             if label in raw:
                 return label
 
-    # Fall back to keyword search in title + description
-    text = f"{event.title or ''} {event.description or ''}".lower()
-    for label, keywords in _CAT_KEYWORDS.items():
-        if any(kw in text for kw in keywords):
+    # Word-boundary keyword search in title + description
+    text = f"{event.title or ''} {event.description or ''}"
+    for label in _CAT_KEYWORDS:
+        if _kw_pattern(label).search(text):
             return label
-    return raw  # keep original if nothing matched
+    return raw
 
 
 def _apply_filters(events: list[Event], category: str, source: str,
