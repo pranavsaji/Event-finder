@@ -4,25 +4,35 @@ import SearchBar from './components/SearchBar'
 import EventCard from './components/EventCard'
 import SourceStats from './components/SourceStats'
 import EmptyState from './components/EmptyState'
+import AuthModal from './components/AuthModal'
 import { useEvents } from './hooks/useEvents'
-import { LayoutGrid, List, Clock } from 'lucide-react'
+import { useAuth } from './context/AuthContext'
+import { LayoutGrid, List, Clock, MapPin, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default function App() {
+  const { user } = useAuth()
   const { events, loading, error, fetchEvents, lastFetched } = useEvents()
   const [hasSearched, setHasSearched] = useState(false)
-  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('grid')
 
   const handleSearch = (params) => {
     setHasSearched(true)
     fetchEvents(params)
   }
 
-  // Auto-load on mount
+  // Auto-load only when logged in
   useEffect(() => {
-    setHasSearched(true)
-    fetchEvents()
-  }, [])
+    if (user) {
+      setHasSearched(true)
+      fetchEvents()
+    }
+  }, [user])
+
+  // Show login wall if not authenticated
+  if (!user) {
+    return <LoginWall />
+  }
 
   return (
     <div className="min-h-screen bg-[#0f0f13]">
@@ -101,6 +111,78 @@ export default function App() {
           </div>
         )}
       </main>
+    </div>
+  )
+}
+
+function LoginWall() {
+  const [showModal, setShowModal] = useState(false)
+  return (
+    <div className="min-h-screen bg-[#0f0f13] flex flex-col">
+      {/* Ambient blobs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-orange-500/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] bg-purple-500/4 rounded-full blur-3xl" />
+      </div>
+
+      {/* Minimal header */}
+      <header className="relative z-10 flex items-center gap-3 px-6 py-5">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-pink-600 flex items-center justify-center shadow-lg shadow-orange-500/25">
+          <span className="text-lg">🌉</span>
+        </div>
+        <div>
+          <p className="text-sm font-bold text-white leading-none">SF Bay Events</p>
+          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+            <MapPin size={9} />San Francisco Bay Area
+          </p>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 text-center gap-8">
+        <div className="space-y-4">
+          <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 rounded-full px-4 py-1.5 text-xs text-orange-400">
+            <Sparkles size={11} />
+            10 sources · real-time · free
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight leading-tight">
+            Discover what's happening<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">
+              in the Bay Area
+            </span>
+          </h1>
+          <p className="text-slate-400 text-base max-w-md mx-auto">
+            Events from Eventbrite, Ticketmaster, Luma, Yelp, Meetup and more — all in one place.
+            Sign in to start exploring.
+          </p>
+        </div>
+
+        {/* Source pills */}
+        <div className="flex flex-wrap justify-center gap-2 max-w-lg">
+          {['🎟 Eventbrite','🎵 Ticketmaster','⭐ Yelp','🟣 Luma','👥 Meetup','📰 SFGate','💸 FunCheap'].map(s => (
+            <span key={s} className="bg-white/5 border border-white/10 rounded-full px-3 py-1 text-xs text-slate-400">{s}</span>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-8 py-3 text-sm font-semibold transition-all shadow-lg shadow-orange-500/25 active:scale-95"
+          >
+            Get Started — It's Free
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            Already have an account? Sign in →
+          </button>
+        </div>
+      </div>
+
+      {showModal && <AuthModal onClose={() => setShowModal(false)} />}
     </div>
   )
 }
