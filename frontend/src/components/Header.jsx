@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { MapPin, Sparkles, LogOut, ChevronDown } from 'lucide-react'
+import { MapPin, Sparkles, LogOut, ChevronDown, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import AuthModal from './AuthModal'
 
-export default function Header({ eventCount, loading }) {
+export default function Header({ eventCount, loading, onAdminClick }) {
   const { user, logout } = useAuth()
   const [showModal, setShowModal] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
@@ -79,6 +79,15 @@ export default function Header({ eventCount, loading }) {
                       <p className="text-xs font-semibold text-white truncate">{user.display_name || 'User'}</p>
                       <p className="text-[11px] text-slate-500 truncate mt-0.5">{user.email}</p>
                     </div>
+                    {user?.is_admin && (
+                      <button
+                        onClick={() => { onAdminClick?.(); setShowDropdown(false) }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-orange-400 hover:text-orange-300 hover:bg-white/5 transition-all"
+                      >
+                        <Shield size={13} />
+                        Admin Portal
+                      </button>
+                    )}
                     <button
                       onClick={() => { logout(); setShowDropdown(false) }}
                       className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-slate-400 hover:text-white hover:bg-white/5 transition-all"

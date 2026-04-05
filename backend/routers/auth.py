@@ -1,4 +1,3 @@
-import re
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 import bcrypt as _bcrypt
@@ -9,10 +8,9 @@ from db.crud import get_user_by_email, create_user
 from db.models import User
 from auth.jwt import create_access_token
 from auth.deps import get_current_user
+from routers.schemas import UserOut, validate_email_str, validate_password_str
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def _hash_password(password: str) -> str:
@@ -34,35 +32,18 @@ class RegisterRequest(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def validate_email(cls, v: str) -> str:
-        v = v.strip().lower()
-        if not _EMAIL_RE.match(v):
-            raise ValueError("Invalid email address")
-        if len(v) > 254:
-            raise ValueError("Email too long")
-        return v
+    def _email(cls, v: str) -> str:
+        return validate_email_str(v)
 
     @field_validator("password")
     @classmethod
-    def validate_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        if len(v) > 128:
-            raise ValueError("Password too long")
-        return v
+    def _password(cls, v: str) -> str:
+        return validate_password_str(v)
 
 
 class LoginRequest(BaseModel):
     email: str
     password: str
-
-
-class UserOut(BaseModel):
-    id: str
-    email: str
-    display_name: str | None
-
-    model_config = {"from_attributes": True}
 
 
 class TokenResponse(BaseModel):

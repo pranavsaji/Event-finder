@@ -8,7 +8,10 @@ from dotenv import load_dotenv
 
 from routers.events import router as events_router
 from routers.auth import router as auth_router
+from routers.admin import router as admin_router
 from db.database import init_db
+from db.crud import get_user_by_email, create_user
+import bcrypt as _bcrypt
 
 load_dotenv()
 
@@ -34,7 +37,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
     allow_origin_regex=_ALLOWED_ORIGIN_REGEX,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Accept", "Authorization"],
 )
 
@@ -76,15 +79,30 @@ async def rate_limit(request: Request, call_next):
 # ---------------------------------------------------------------------------
 # Startup
 # ---------------------------------------------------------------------------
+_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "pranavs.mec@gmail.com")
+_ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "D$5700n")
+_ADMIN_DISPLAY = os.getenv("ADMIN_DISPLAY_NAME", "Pranav")
+
+
 @app.on_event("startup")
 async def startup():
     await init_db()
+    await _seed_admin()
+
+
+async def _seed_admin():
+    from db.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        if not await get_user_by_email(db, _ADMIN_EMAIL):
+            hashed = _bcrypt.hashpw(_ADMIN_PASSWORD.encode(), _bcrypt.gensalt()).decode()
+            await create_user(db, _ADMIN_EMAIL, hashed, _ADMIN_DISPLAY, is_admin=True)
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 app.include_router(events_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 
 
 @app.get("/health")

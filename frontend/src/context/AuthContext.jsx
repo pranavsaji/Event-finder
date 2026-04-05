@@ -15,16 +15,10 @@ export function AuthProvider({ children }) {
     setUser(userData)
   }
 
-  const register = async (email, password, displayName) => {
-    const res = await fetch(`${API}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, display_name: displayName }),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.detail || 'Registration failed')
-    _saveSession(data.access_token, data.user)
-  }
+  const _authHeaders = () => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${localStorage.getItem('sf_token') || ''}`,
+  })
 
   const login = async (email, password) => {
     const res = await fetch(`${API}/api/auth/login`, {
@@ -43,8 +37,38 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  // Admin helpers
+  const adminListUsers = async () => {
+    const res = await fetch(`${API}/api/admin/users`, { headers: _authHeaders() })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.detail || 'Failed to fetch users')
+    return data
+  }
+
+  const adminAddUser = async (email, password, displayName) => {
+    const res = await fetch(`${API}/api/admin/users`, {
+      method: 'POST',
+      headers: _authHeaders(),
+      body: JSON.stringify({ email, password, display_name: displayName || null }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.detail || 'Failed to add user')
+    return data
+  }
+
+  const adminDeleteUser = async (userId) => {
+    const res = await fetch(`${API}/api/admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: _authHeaders(),
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.detail || 'Failed to delete user')
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, adminListUsers, adminAddUser, adminDeleteUser }}>
       {children}
     </AuthContext.Provider>
   )

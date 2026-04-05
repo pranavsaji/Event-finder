@@ -76,14 +76,32 @@ async def get_user_by_id(db: AsyncSession, user_id: str) -> User | None:
     return result.scalar_one_or_none()
 
 
-async def create_user(db: AsyncSession, email: str, hashed_password: str, display_name: str | None) -> User:
+async def create_user(
+    db: AsyncSession,
+    email: str,
+    hashed_password: str,
+    display_name: str | None,
+    is_admin: bool = False,
+) -> User:
     user = User(
         id=str(uuid.uuid4()),
         email=email.lower(),
         hashed_password=hashed_password,
         display_name=display_name or email.split("@")[0],
+        is_admin=is_admin,
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
     return user
+
+
+async def list_users(db: AsyncSession) -> list[User]:
+    result = await db.execute(select(User).order_by(User.created_at))
+    return list(result.scalars().all())
+
+
+async def delete_user(db: AsyncSession, user_id: str) -> bool:
+    result = await db.execute(delete(User).where(User.id == user_id))
+    await db.commit()
+    return result.rowcount > 0

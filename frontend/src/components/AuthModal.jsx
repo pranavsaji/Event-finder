@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { X, Mail, Lock, User, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react'
+import { X, Mail, Lock, LogIn, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 export default function AuthModal({ onClose }) {
-  const { login, register } = useAuth()
-  const [tab, setTab] = useState('login') // 'login' | 'register'
-  const [form, setForm] = useState({ email: '', password: '', displayName: '' })
+  const { login } = useAuth()
+  const [form, setForm] = useState({ email: '', password: '' })
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -17,11 +16,7 @@ export default function AuthModal({ onClose }) {
     setError('')
     setLoading(true)
     try {
-      if (tab === 'login') {
-        await login(form.email, form.password)
-      } else {
-        await register(form.email, form.password, form.displayName)
-      }
+      await login(form.email, form.password)
       onClose()
     } catch (err) {
       setError(err.message)
@@ -41,14 +36,10 @@ export default function AuthModal({ onClose }) {
       {/* Modal */}
       <div className="relative w-full max-w-sm bg-[#16161d] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4">
+        <div className="flex items-center justify-between px-6 pt-6 pb-5">
           <div>
-            <h2 className="text-lg font-bold text-white">
-              {tab === 'login' ? 'Welcome back' : 'Create account'}
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {tab === 'login' ? 'Sign in to your account' : 'Join SF Bay Events'}
-            </p>
+            <h2 className="text-lg font-bold text-white">Welcome back</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Sign in to your account</p>
           </div>
           <button
             onClick={onClose}
@@ -58,38 +49,8 @@ export default function AuthModal({ onClose }) {
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex mx-6 mb-5 bg-white/5 rounded-xl p-1">
-          {['login', 'register'].map((t) => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setError('') }}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
-                tab === t
-                  ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              {t === 'login' ? 'Sign In' : 'Register'}
-            </button>
-          ))}
-        </div>
-
         {/* Form */}
         <form onSubmit={submit} className="px-6 pb-6 space-y-3">
-          {tab === 'register' && (
-            <div className="relative">
-              <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Display name (optional)"
-                value={form.displayName}
-                onChange={set('displayName')}
-                className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500/50 transition-all"
-              />
-            </div>
-          )}
-
           <div className="relative">
             <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
@@ -135,12 +96,15 @@ export default function AuthModal({ onClose }) {
           >
             {loading ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : tab === 'login' ? (
-              <><LogIn size={14} /> Sign In</>
             ) : (
-              <><UserPlus size={14} /> Create Account</>
+              <><LogIn size={14} /> Sign In</>
             )}
           </button>
+
+          <p className="text-center text-xs text-slate-500 pt-1">
+            Don't have access?{' '}
+            <span className="text-slate-400">Contact the admin to get invited.</span>
+          </p>
         </form>
       </div>
     </div>

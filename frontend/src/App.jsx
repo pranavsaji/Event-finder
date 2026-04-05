@@ -5,6 +5,7 @@ import EventCard from './components/EventCard'
 import SourceStats from './components/SourceStats'
 import EmptyState from './components/EmptyState'
 import AuthModal from './components/AuthModal'
+import AdminPage from './pages/AdminPage'
 import { useEvents } from './hooks/useEvents'
 import { useAuth } from './context/AuthContext'
 import { LayoutGrid, List, Clock, MapPin, Sparkles } from 'lucide-react'
@@ -15,6 +16,7 @@ export default function App() {
   const { events, loading, error, fetchEvents, lastFetched } = useEvents()
   const [hasSearched, setHasSearched] = useState(false)
   const [viewMode, setViewMode] = useState('grid')
+  const [showAdmin, setShowAdmin] = useState(false)
 
   const handleSearch = (params) => {
     setHasSearched(true)
@@ -34,6 +36,10 @@ export default function App() {
     return <LoginWall />
   }
 
+  if (showAdmin && user?.is_admin) {
+    return <AdminPage onBack={() => setShowAdmin(false)} />
+  }
+
   return (
     <div className="min-h-screen bg-[#0f0f13]">
       {/* Ambient background */}
@@ -43,7 +49,7 @@ export default function App() {
         <div className="absolute bottom-0 left-1/2 w-[500px] h-[500px] bg-purple-500/4 rounded-full blur-3xl" />
       </div>
 
-      <Header eventCount={events.length} loading={loading} />
+      <Header eventCount={events.length} loading={loading} onAdminClick={() => setShowAdmin(true)} />
 
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {/* Hero */}
@@ -166,19 +172,16 @@ function LoginWall() {
         </div>
 
         {/* CTA */}
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex flex-col items-center gap-3">
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-8 py-3 text-sm font-semibold transition-all shadow-lg shadow-orange-500/25 active:scale-95"
           >
-            Get Started — It's Free
+            Sign In
           </button>
-          <button
-            onClick={() => setShowModal(true)}
-            className="text-sm text-slate-400 hover:text-white transition-colors"
-          >
-            Already have an account? Sign in →
-          </button>
+          <p className="text-xs text-slate-500">
+            Invite-only · contact the admin to request access
+          </p>
         </div>
       </div>
 
