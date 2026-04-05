@@ -55,13 +55,11 @@ async def get_events(
     if source and source.lower() not in ALLOWED_SOURCES:
         raise HTTPException(status_code=400, detail=f"Unknown source '{source}'")
 
-    # Cache key covers query + category; source filter is applied cheaply after
-    cache_key = f"q={q.lower()}&category={category.lower()}"
+    # Cache key is query-only; category/source are cheap in-memory filters applied after
+    cache_key = f"q={q.lower()}"
     cached = await get_cached_events(db, cache_key)
     if cached is not None:
-        if source:
-            cached = [e for e in cached if e.source.lower() == source.lower()]
-        return cached
+        return _apply_filters(cached, category, source)
 
     # Cache miss — scrape all sources in parallel
     tasks = [
@@ -91,10 +89,15 @@ async def get_events(
             unique.append(ev)
 
     await upsert_events(db, unique, cache_key)
+    return _apply_filters(unique, category, source)
 
+
+def _apply_filters(events: list[Event], category: str, source: str) -> list[Event]:
+    if category:
+        events = [e for e in events if (e.category or "").lower() == category.lower()]
     if source:
-        unique = [e for e in unique if e.source.lower() == source.lower()]
-    return unique
+        events = [e for e in events if e.source.lower() == source.lower()]
+    return events
 
 
 @router.get("/sources")
