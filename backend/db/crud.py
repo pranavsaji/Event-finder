@@ -1,7 +1,7 @@
 import os
 import uuid
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import EventRow, User
@@ -29,7 +29,9 @@ async def get_cached_events(db: AsyncSession, cache_key: str) -> list[Event] | N
 
 
 async def upsert_events(db: AsyncSession, events: list[Event], cache_key: str) -> None:
-    await db.execute(delete(EventRow).where(EventRow.cache_key == cache_key))
+    # Delete ALL existing events (any cache_key) then re-insert to avoid PK conflicts
+    # when the cache_key scheme changes or IDs overlap across keys.
+    await db.execute(delete(EventRow))
     now = datetime.now(timezone.utc)
     for ev in events:
         row = EventRow(
