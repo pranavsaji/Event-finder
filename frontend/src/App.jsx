@@ -23,6 +23,8 @@ export default function App() {
     fetchEvents(params)
   }
 
+  // Auto-load passes no filters so backend returns all upcoming events
+
   // Auto-load only when logged in
   useEffect(() => {
     if (user) {

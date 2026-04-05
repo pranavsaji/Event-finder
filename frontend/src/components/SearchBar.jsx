@@ -1,9 +1,18 @@
-import { Search, Filter, X, RefreshCw } from 'lucide-react'
+import { Search, Filter, X, RefreshCw, Calendar, Tag } from 'lucide-react'
 import { useState } from 'react'
 
 const CATEGORIES = [
   'All', 'Music', 'Food & Drink', 'Arts', 'Sports', 'Tech',
   'Community', 'Nightlife', 'Film', 'Family', 'Business',
+]
+
+const DATE_RANGES = [
+  { label: 'Any Date', value: '' },
+  { label: 'Today', value: 'today' },
+  { label: 'Tomorrow', value: 'tomorrow' },
+  { label: 'This Weekend', value: 'weekend' },
+  { label: 'This Week', value: 'week' },
+  { label: 'This Month', value: 'month' },
 ]
 
 const SOURCES = [
@@ -15,25 +24,42 @@ export default function SearchBar({ onSearch, loading }) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
   const [source, setSource] = useState('All Sources')
+  const [dateRange, setDateRange] = useState('')
+  const [freeOnly, setFreeOnly] = useState(false)
 
   const submit = (overrides = {}) => {
-    const q = overrides.query ?? query
-    const cat = overrides.category ?? category
-    const src = overrides.source ?? source
     onSearch({
-      q,
-      category: cat === 'All' ? '' : cat,
-      source: src === 'All Sources' ? '' : src,
+      q: overrides.query ?? query,
+      category: (overrides.category ?? category) === 'All' ? '' : (overrides.category ?? category),
+      source: (overrides.source ?? source) === 'All Sources' ? '' : (overrides.source ?? source),
+      date_range: overrides.dateRange ?? dateRange,
+      free_only: overrides.freeOnly ?? freeOnly,
     })
   }
 
-  const handleKey = (e) => {
-    if (e.key === 'Enter') submit()
-  }
+  const handleKey = (e) => { if (e.key === 'Enter') submit() }
 
-  const clear = () => {
-    setQuery('')
-    submit({ query: '' })
+  const clear = () => { setQuery(''); submit({ query: '' }) }
+
+  const setAndSubmit = (updates) => {
+    const next = {
+      query: updates.query ?? query,
+      category: updates.category ?? category,
+      source: updates.source ?? source,
+      dateRange: updates.dateRange ?? dateRange,
+      freeOnly: updates.freeOnly ?? freeOnly,
+    }
+    if (updates.category !== undefined) setCategory(updates.category)
+    if (updates.source !== undefined) setSource(updates.source)
+    if (updates.dateRange !== undefined) setDateRange(updates.dateRange)
+    if (updates.freeOnly !== undefined) setFreeOnly(updates.freeOnly)
+    onSearch({
+      q: next.query,
+      category: next.category === 'All' ? '' : next.category,
+      source: next.source === 'All Sources' ? '' : next.source,
+      date_range: next.dateRange,
+      free_only: next.freeOnly,
+    })
   }
 
   return (
@@ -56,45 +82,67 @@ export default function SearchBar({ onSearch, loading }) {
         )}
       </div>
 
-      {/* Filters row */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <Filter size={13} className="text-slate-500" />
+      {/* Category pills */}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <Tag size={12} className="text-slate-500 shrink-0" />
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setAndSubmit({ category: cat })}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              category === cat
+                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
+                : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
 
-        {/* Category pills */}
-        <div className="flex flex-wrap gap-1.5">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => {
-                setCategory(cat)
-                submit({ category: cat })
-              }}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                category === cat
-                  ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
-                  : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+      {/* Date + Source + Free row */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <Calendar size={12} className="text-slate-500 shrink-0" />
+
+        {/* Date range pills */}
+        {DATE_RANGES.map(({ label, value }) => (
+          <button
+            key={value}
+            onClick={() => setAndSubmit({ dateRange: value })}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              dateRange === value
+                ? 'bg-blue-500 text-white shadow-md shadow-blue-500/30'
+                : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+
+        <div className="w-px h-4 bg-white/10 mx-1" />
+
+        {/* Free only toggle */}
+        <button
+          onClick={() => setAndSubmit({ freeOnly: !freeOnly })}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+            freeOnly
+              ? 'bg-green-500/80 text-white shadow-md shadow-green-500/30'
+              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+          }`}
+        >
+          Free only
+        </button>
 
         <div className="w-px h-4 bg-white/10 mx-1" />
 
         {/* Source select */}
         <select
           value={source}
-          onChange={(e) => {
-            setSource(e.target.value)
-            submit({ source: e.target.value })
-          }}
+          onChange={(e) => setAndSubmit({ source: e.target.value })}
           className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-orange-500/40 cursor-pointer"
         >
           {SOURCES.map((s) => (
-            <option key={s} value={s} className="bg-slate-900">
-              {s}
-            </option>
+            <option key={s} value={s} className="bg-slate-900">{s}</option>
           ))}
         </select>
 
